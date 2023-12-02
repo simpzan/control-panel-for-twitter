@@ -5417,26 +5417,42 @@ async function main() {
   })
 
   patchDispatch()
+  // debug = true
+}
+
+function isOnForYouTab() {
+  if (!isOnHomeTimeline()) return false
+  const $foryou = document.querySelector('[data-testid="ScrollSnap-List"] > div > a')
+  return $foryou?.ariaSelected === 'true'
 }
 function patchDispatch() {
   let store = getStore();
   if (!store) return;
 
-  let next = store.dispatch
+  let updateTimestamp = 0
+  const next = store.dispatch
   store.dispatch = action => {
-    if (selectedHomeTabIndex !== 0) return next(action)
-
     const actionString = action.toString()
+    // if (actionString.includes('{sentry:a}')) return next(action)
+
+    function handleFetch() {
+      if (!isOnForYouTab()) return next(action)
+
+      const now = Date.now()
+      const diff = now - updateTimestamp
+      const limitMs = 60*60*1000
+      if (diff < limitMs) {
+        log(`${diff}ms < ${limitMs}ms, skip fetch foryou timeline`)
+        return Promise.resolve({performed: 0})
+      }
+      updateTimestamp = now
+      return next(action)
+    }
+
     const fetchBottom = 'fetchBottom called on non-existing timeline'
     const fetchInitialOrTop = 'l(xe(Object.assign({},'
-    if (actionString.includes(fetchBottom)) {
-      log(`skip fetchBottom`)
-      return Promise.resolve({performed: 0})
-    }
-    if (actionString.includes(fetchInitialOrTop)) {
-      log(`skip fetchInitialOrTop`)
-      return Promise.resolve({performed: 0})
-    }
+    if (actionString.includes(fetchInitialOrTop)) return handleFetch()
+    if (actionString.includes(fetchBottom)) return handleFetch()
     return next(action)
   }
   log('dispatch patched')
