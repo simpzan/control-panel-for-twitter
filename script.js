@@ -1751,17 +1751,19 @@ function getElement(selector, {
   })
 }
 
-function getStateEntities() {
+function getStore() {
   let reactRootContainer = ($reactRoot?.wrappedJSObject ? $reactRoot.wrappedJSObject : $reactRoot)?._reactRootContainer
-  if (reactRootContainer) {
-    let entities = reactRootContainer._internalRoot?.current?.memoizedState?.element?.props?.children?.props?.store?.getState()?.entities
-    if (entities) {
-      return entities
-    } else {
-      warn('state entities not found')
-    }
+  if (!reactRootContainer) return warn('React root container not found')
+  let store = reactRootContainer._internalRoot?.current?.memoizedState?.element?.props?.children?.props?.store
+  if (!store) return warn('store not found')
+  return store
+}
+function getStateEntities() {
+  const entities = getStore()?.getState()?.entities
+  if (entities) {
+    return entities
   } else {
-    warn('React root container not found')
+    warn('state entities not found')
   }
 }
 
