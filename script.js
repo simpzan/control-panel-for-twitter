@@ -5351,6 +5351,31 @@ async function main() {
     attributes: true,
     attributeFilter: ['class']
   })
+
+  patchDispatch()
+}
+function patchDispatch() {
+  let store = getStore();
+  if (!store) return;
+
+  let next = store.dispatch
+  store.dispatch = action => {
+    if (selectedHomeTabIndex !== 0) return next(action)
+
+    const actionString = action.toString()
+    const fetchBottom = 'fetchBottom called on non-existing timeline'
+    const fetchInitialOrTop = 'l(xe(Object.assign({},'
+    if (actionString.includes(fetchBottom)) {
+      log(`skip fetchBottom`)
+      return Promise.resolve({performed: 0})
+    }
+    if (actionString.includes(fetchInitialOrTop)) {
+      log(`skip fetchInitialOrTop`)
+      return Promise.resolve({performed: 0})
+    }
+    return next(action)
+  }
+  log('dispatch patched')
 }
 
 /**
