@@ -2321,6 +2321,9 @@ async function observeTitle() {
       document.title = title.replace(ltr ? /X$/ : 'X', getString('TWITTER'))
       return
     }
+    if (!hideComposeButton()) {
+      setTimeout(hideComposeButton, 0);
+    }
     if (observingPageChanges) {
       onTitleChange(title)
     }
@@ -5418,6 +5421,13 @@ async function main() {
 
   patchDispatch()
   // debug = true
+}
+
+function hideComposeButton() {
+  const $composeButton = document.querySelector('[data-testid="FloatingActionButtonBase"]')
+  if (!$composeButton) return false
+  $composeButton.style.display = 'none'
+  return true
 }
 
 function isOnForYouTab() {
