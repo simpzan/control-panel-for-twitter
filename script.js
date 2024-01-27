@@ -5366,11 +5366,12 @@ function patchDispatch() {
     const fetchBottom = 'fetchBottom called on non-existing timeline'
     const fetchInitialOrTop = '(l,o)=>{const i=o();if(ce(i)){const e=Object.assign({},a,d);return l(Ee(e))}{const d=e&&Ie(i,r),o=!e&&!a.polling;return d?t.O4.resolve(Y):l(Be(Object.assign({},a,n))).then((e=>(o&&l(Fe()),e)))}}'
     // if (!actionString.includes('{sentry:')) log(actionString)
-    if (actionString.includes(fetchBottom)) {
+    const isOnProfileTimeline = isOnProfilePage();
+    if (actionString.includes(fetchBottom) && !isOnProfileTimeline) {
       log(`skip fetchBottom`)
       return Promise.resolve({performed: 0})
     }
-    if (actionString.includes(fetchInitialOrTop)) {
+    if (actionString.includes(fetchInitialOrTop) && !isOnProfileTimeline) {
       log(`skip fetchInitialOrTop`)
       return Promise.resolve({performed: 0})
     }
