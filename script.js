@@ -5364,7 +5364,8 @@ function patchDispatch() {
 
     const actionString = action.toString()
     const fetchBottom = 'fetchBottom called on non-existing timeline'
-    const fetchInitialOrTop = 'l(xe(Object.assign({},'
+    const fetchInitialOrTop = '(l,o)=>{const i=o();if(ce(i)){const e=Object.assign({},a,d);return l(Ee(e))}{const d=e&&Ie(i,r),o=!e&&!a.polling;return d?t.O4.resolve(Y):l(Be(Object.assign({},a,n))).then((e=>(o&&l(Fe()),e)))}}'
+    // if (!actionString.includes('{sentry:')) log(actionString)
     if (actionString.includes(fetchBottom)) {
       log(`skip fetchBottom`)
       return Promise.resolve({performed: 0})
