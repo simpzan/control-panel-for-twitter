@@ -5430,6 +5430,41 @@ function hideComposeButton() {
   return true
 }
 
+class FetchInitialOrTopParser {
+  constructor() {
+    this.count = 0
+    this.cache = null
+  }
+  get(actionString) {
+    if (this.cache) return this.cache
+    if (this.count > 100) {
+      console.error(`can't found fetchInitialOrTop after 100 attempts, maybe X codebase updated`)
+      return
+    }
+    this.count++
+    if (this._parse()) {
+      this.cache = actionString
+      log(`found fetchInitialOrTop after ${this.count} attempts:\n${actionString}`)
+    }
+    return this.cache
+  }
+  _parse() {
+    const frames = new Error().stack.split('\n')
+    /* `frames` is similar to following:
+    0: "Error"
+    1: "    at FetchInitialOrTopParser._parse"
+    2: "    at FetchInitialOrTopParser.get"
+    3: "    at store.dispatch"
+    4: "    at https://abs.twimg.com/responsive-web/client-web/vendor.993da1fa.js:98:10699"
+    5: "    at _e._fetchInitialOrTop"
+    6: "    at _e._initialize"
+    7: "    at _e.componentDidMount"
+    */
+    if (frames.length < 7) return false
+    const matched = frames[5].includes('._fetchInitialOrTop ') && frames[6].includes('._initialize ')
+    return matched
+  }
+}
 function isOnForYouTab() {
   if (!isOnHomeTimeline()) return false
   const $foryou = document.querySelector('[data-testid="ScrollSnap-List"] > div > a')
@@ -5440,10 +5475,12 @@ function patchDispatch() {
   if (!store) return;
 
   let updateTimestamp = 0
+  const parser = new FetchInitialOrTopParser()
   const next = store.dispatch
   store.dispatch = action => {
+    if (typeof action !== 'function' || selectedHomeTabIndex == -1) return next(action)
     const actionString = action.toString()
-    // if (actionString.includes('{sentry:a}')) return next(action)
+    if (actionString.includes('{sentry:a}')) return next(action)
 
     function handleFetch() {
       if (!isOnForYouTab()) return next(action)
@@ -5458,9 +5495,10 @@ function patchDispatch() {
       updateTimestamp = now
       return next(action)
     }
-
     const fetchBottom = 'fetchBottom called on non-existing timeline'
-    const fetchInitialOrTop = 'l(xe(Object.assign({},'
+    const fetchInitialOrTop = parser.get(actionString)
+    if (!fetchInitialOrTop) return next(action);
+
     if (actionString.includes(fetchInitialOrTop)) return handleFetch()
     if (actionString.includes(fetchBottom)) return handleFetch()
     return next(action)
