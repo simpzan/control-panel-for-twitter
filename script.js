@@ -5434,10 +5434,12 @@ class FetchInitialOrTopParser {
   constructor() {
     this.count = 0
     this.cache = null
+    const stack = new Error().stack
+    this.isGoogleChrome = stack.includes('(chrome-extension://')
   }
   get(actionString) {
     if (this.cache) return this.cache
-    if (this.count > 100) {
+    if (this.count > 200) {
       console.error(`can't found fetchInitialOrTop after 100 attempts, maybe X codebase updated`)
       return
     }
@@ -5449,19 +5451,30 @@ class FetchInitialOrTopParser {
     return this.cache
   }
   _parse() {
-    const frames = new Error().stack.split('\n')
-    /* `frames` is similar to following:
-    0: "Error"
-    1: "    at FetchInitialOrTopParser._parse"
-    2: "    at FetchInitialOrTopParser.get"
-    3: "    at store.dispatch"
-    4: "    at https://abs.twimg.com/responsive-web/client-web/vendor.993da1fa.js:98:10699"
-    5: "    at _e._fetchInitialOrTop"
-    6: "    at _e._initialize"
-    7: "    at _e.componentDidMount"
+    const stack = new Error().stack
+    const frames = stack.split('\n')
+    if (stack.includes('fetchInitialOrTop')) log('backtrace', this.isGoogleChrome, frames)
+    /*
+on chrome:
+0: "Error"
+1: "    at FetchInitialOrTopParser._parse (chrome-extension://gplgoaekbahilkkhcenlgcllkiopknjf/script.js:5452:20)"
+2: "    at FetchInitialOrTopParser.get (chrome-extension://gplgoaekbahilkkhcenlgcllkiopknjf/script.js:5445:14)"
+3: "    at store.dispatch (chrome-extension://gplgoaekbahilkkhcenlgcllkiopknjf/script.js:5490:38)"
+4: "    at https://abs.twimg.com/responsive-web/client-web/vendor.993da1fa.js:98:10699"
+5: "    at _e._fetchInitialOrTop (https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle.AudioSpacebarScreen~bundle.B.653fa5da.js:1:116906)"
+6: "    at _e._initialize (https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle.AudioSpacebarScreen~bundle.B.653fa5da.js:1:116183)"
+7: "    at _e.componentDidMount (https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle.AudioSpacebarScreen~bundle.B.653fa5da.js:1:114604)"
+on safari:
+0 "_parse@webkit-masked-url://hidden/:5452:28"
+1 "get@webkit-masked-url://hidden/:5445:20"
+2 "@webkit-masked-url://hidden/:5504:41"
+3 "_fetchInitialOrTop@https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery…"
+4 "_initialize@https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle…"
+5 "componentDidMount@https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~…"
     */
-    if (frames.length < 7) return false
-    const matched = frames[5].includes('._fetchInitialOrTop ') && frames[6].includes('._initialize ')
+    const index = this.isGoogleChrome ? 5 : 3
+    if (frames.length < index+2) return false
+    const matched = frames[index].includes('_fetchInitialOrTop')
     return matched
   }
 }
