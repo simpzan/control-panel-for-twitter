@@ -5491,7 +5491,7 @@ function patchDispatch() {
   const parser = new FetchInitialOrTopParser()
   const next = store.dispatch
   store.dispatch = action => {
-    if (typeof action !== 'function' || selectedHomeTabIndex == -1) return next(action)
+    if (config.hideForYouTimeline || typeof action !== 'function' || selectedHomeTabIndex !== 0) return next(action)
     const actionString = action.toString()
     if (actionString.includes('{sentry:a}')) return next(action)
 
