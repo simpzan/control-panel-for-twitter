@@ -5439,14 +5439,14 @@ class FetchInitialOrTopParser {
   }
   get(actionString) {
     if (this.cache) return this.cache
-    if (this.count > 200) {
+    if (this.count > 1000) {
       console.error(`can't found fetchInitialOrTop after 100 attempts, maybe X codebase updated`)
       return
     }
     this.count++
     if (this._parse()) {
       this.cache = actionString
-      log(`found fetchInitialOrTop after ${this.count} attempts:\n${actionString}`)
+      console.log(`found fetchInitialOrTop after ${this.count} attempts:\n${actionString}`)
     }
     return this.cache
   }
