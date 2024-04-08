@@ -1753,9 +1753,9 @@ function getElement(selector, {
 
 function getStore() {
   let reactRootContainer = ($reactRoot?.wrappedJSObject ? $reactRoot.wrappedJSObject : $reactRoot)?._reactRootContainer
-  if (!reactRootContainer) return warn('React root container not found')
+  if (!reactRootContainer) return error('React root container not found')
   let store = reactRootContainer.current?.memoizedState?.element?.props?.children?.props?.store
-  if (!store) return warn('store not found')
+  if (!store) return error('store not found')
   return store
 }
 function getStateEntities() {
