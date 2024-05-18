@@ -5589,7 +5589,8 @@ function patchDispatch() {
   store.dispatch = action => {
     if (config.hideForYouTimeline || typeof action !== 'function' || selectedHomeTabIndex !== 0) return next(action)
     const actionString = action.toString()
-    if (actionString.includes('{sentry:a}')) return next(action)
+    const actionLength = actionString.length
+    if (actionLength < 100 || actionLength > 250) return next(action)
 
     function handleFetch() {
       if (!isOnForYouTab()) return next(action)
@@ -5608,8 +5609,9 @@ function patchDispatch() {
     const fetchInitialOrTop = parser.get(actionString)
     if (!fetchInitialOrTop) return next(action);
 
-    if (actionString.includes(fetchInitialOrTop)) return handleFetch()
-    if (actionString.includes(fetchBottom)) return handleFetch()
+    if (actionString === fetchInitialOrTop) return handleFetch()
+    if (actionLength > 200 && actionString.includes(fetchBottom)) return handleFetch()
+    // console.log(actionString)
     return next(action)
   }
   log('dispatch patched')
