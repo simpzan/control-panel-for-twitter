@@ -5511,6 +5511,108 @@ async function main() {
     attributes: true,
     attributeFilter: ['class']
   })
+  patchDispatch()
+  // debug = true
+}
+
+class FetchInitialOrTopParser {
+  constructor() {
+    this.count = 0
+    this.cache = null
+    const stack = new Error().stack
+    this.isGoogleChrome = stack.includes('(chrome-extension://')
+  }
+  get(actionString) {
+    if (this.cache) return this.cache
+    if (this.count > 1000) {
+      console.error(`can't found fetchInitialOrTop after 100 attempts, maybe X codebase updated`)
+      return
+    }
+    this.count++
+    if (this._parse()) {
+      this.cache = actionString
+      console.log(`found fetchInitialOrTop after ${this.count} attempts:\n${actionString}`)
+    }
+    return this.cache
+  }
+  _parse() {
+    const stack = new Error().stack
+    const frames = stack.split('\n')
+    if (stack.includes('fetchInitialOrTop')) log('backtrace', this.isGoogleChrome, frames)
+    /*
+on chrome:
+0: "Error"
+1: "    at FetchInitialOrTopParser._parse (chrome-extension://gplgoaekbahilkkhcenlgcllkiopknjf/script.js:5452:20)"
+2: "    at FetchInitialOrTopParser.get (chrome-extension://gplgoaekbahilkkhcenlgcllkiopknjf/script.js:5445:14)"
+3: "    at store.dispatch (chrome-extension://gplgoaekbahilkkhcenlgcllkiopknjf/script.js:5490:38)"
+4: "    at https://abs.twimg.com/responsive-web/client-web/vendor.993da1fa.js:98:10699"
+5: "    at _e._fetchInitialOrTop (https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle.AudioSpacebarScreen~bundle.B.653fa5da.js:1:116906)"
+6: "    at _e._initialize (https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle.AudioSpacebarScreen~bundle.B.653fa5da.js:1:116183)"
+7: "    at _e.componentDidMount (https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle.AudioSpacebarScreen~bundle.B.653fa5da.js:1:114604)"
+on safari:
+0 "_parse@webkit-masked-url://hidden/:5452:28"
+1 "get@webkit-masked-url://hidden/:5445:20"
+2 "@webkit-masked-url://hidden/:5504:41"
+3 "_fetchInitialOrTop@https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery…"
+4 "_initialize@https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~bundle…"
+5 "componentDidMount@https://abs.twimg.com/responsive-web/client-web/shared~bundle.Articles~bundle.AudioSpaceDetail~bundle.AudioSpaceDiscovery~…"
+    */
+    const index = this.isGoogleChrome ? 5 : 3
+    if (frames.length < index+2) return false
+    const matched = frames[index].includes('_fetchInitialOrTop')
+    return matched
+  }
+}
+function isOnForYouTab() {
+  if (!isOnHomeTimeline()) return false
+  const $foryou = document.querySelector('[data-testid="ScrollSnap-List"] > div > a')
+  return $foryou?.ariaSelected === 'true'
+}
+function getStore() {
+  let wrapped = $reactRoot.firstElementChild.wrappedJSObject || $reactRoot.firstElementChild
+  let reactPropsKey = Object.keys(wrapped).find(key => key.startsWith('__reactProps'))
+  if (reactPropsKey) {
+    let store = wrapped[reactPropsKey].children?.props?.children?.props?.store
+    if (store) return store
+    warn('React store not found')
+  } else {
+    warn('React prop key not found')
+  }
+}
+function patchDispatch() {
+  let store = getStore();
+  if (!store) return;
+
+  let updateTimestamp = 0
+  const parser = new FetchInitialOrTopParser()
+  const next = store.dispatch
+  store.dispatch = action => {
+    if (config.hideForYouTimeline || typeof action !== 'function' || selectedHomeTabIndex !== 0) return next(action)
+    const actionString = action.toString()
+    if (actionString.includes('{sentry:a}')) return next(action)
+
+    function handleFetch() {
+      if (!isOnForYouTab()) return next(action)
+
+      const now = Date.now()
+      const diff = now - updateTimestamp
+      const limitMs = 60*60*1000
+      if (diff < limitMs) {
+        log(`${diff}ms < ${limitMs}ms, skip fetch foryou timeline`)
+        return Promise.resolve({performed: 0})
+      }
+      updateTimestamp = now
+      return next(action)
+    }
+    const fetchBottom = 'fetchBottom called on non-existing timeline'
+    const fetchInitialOrTop = parser.get(actionString)
+    if (!fetchInitialOrTop) return next(action);
+
+    if (actionString.includes(fetchInitialOrTop)) return handleFetch()
+    if (actionString.includes(fetchBottom)) return handleFetch()
+    return next(action)
+  }
+  log('dispatch patched')
 }
 
 /**
