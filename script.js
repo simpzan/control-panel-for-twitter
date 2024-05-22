@@ -5564,7 +5564,7 @@ on safari:
   }
 }
 function isOnForYouTab() {
-  if (!isOnHomeTimeline()) return false
+  if (!isOnHomeTimelinePage()) return false
   const $foryou = document.querySelector('[data-testid="ScrollSnap-List"] > div > a')
   return $foryou?.ariaSelected === 'true'
 }
